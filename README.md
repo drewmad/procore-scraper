@@ -21,84 +21,100 @@ URL list → scrape → clean-md → chunk → embed → FAISS/Qdrant
 
 ## Quick start
 
+### Prerequisites
+
 ```bash
-# 1. clone & enter repo
-git clone https://github.com/<you>/procore_scraper.git
-cd procore_scraper
+# Install dependencies
+pip install -r requirements.txt
 
-# 2. create venv + deps
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m pip install -e .          # editable package
+# Set up environment variables
+cp config/secrets.env.example config/secrets.env
+# Edit config/secrets.env with your OpenAI API key
+```
 
-# 3. scrape & build index
-python generate_url_list.py
-python fetch_sitemap_urls.py --domains developers.procore.com support.procore.com procore.com --out url_list_site.txt
-cat url_list.txt url_list_site.txt | sort -u > url_list_full.txt
-python prune_urls.py url_list_full.txt
-python scrape_procore.py url_list_clean.txt
+### Option 1: Local FAISS Index
+
+```bash
+# 1. Scrape and process content
+python scrape_procore.py
+
+# 2. Generate embeddings
 python chunk_and_embed.py
+
+# 3. Create FAISS index
 python ingest_vector_db.py --db faiss
+```
 
-# 4. ask a question
-python -m procore_scraper.cli_ask "How do I refresh an OAuth token?"
+### Option 2: OpenAI Vector Store (Recommended)
 
-Requires: OpenAI API key (export OPENAI_API_KEY=sk-…).
+```bash
+# 1. Scrape and process content (same as above)
+python scrape_procore.py
+python chunk_and_embed.py
 
-Configuration
-# config/settings.yaml
-vector_db: faiss                  # or qdrant
-emb_model: text-embedding-3-large # OpenAI model
-chunk_size: 320
-chunk_overlap: 40
-hnsw_m: 16
-hnsw_ef_construct: 256
+# 2. Build JSONL payload for OpenAI
+python build_jsonl.py
 
-Change → rerun chunk_and_embed.py (only new chunks embed).
+# 3. Create OpenAI vector store
+python create_store.py
 
-⸻
+# 4. Create Assistant with retrieval tool
+python create_assistant.py
 
-GitHub Actions
+# 5. Query the Assistant
+python query_assistant.py
+```
 
-.github/workflows/refresh.yml re-crawls, embeds delta, and uploads the fresh
-faiss.index artefact every Monday 06:00 UTC or on manual dispatch.
+## File Structure
 
-Add repository secrets:
+```
+├── data/
+│   ├── clean_md/          # Processed markdown files
+│   ├── embeddings/        # Vector embeddings
+│   └── raw_html/          # Raw scraped HTML
+├── config/
+│   ├── settings.yaml      # Configuration
+│   └── secrets.env        # API keys (not in git)
+├── scripts/
+│   ├── scrape_procore.py  # Main scraping script
+│   ├── chunk_and_embed.py # Embedding generation
+│   ├── ingest_vector_db.py # FAISS/Qdrant ingestion
+│   ├── build_jsonl.py     # OpenAI payload builder
+│   ├── create_store.py    # OpenAI vector store
+│   ├── create_assistant.py # OpenAI Assistant
+│   └── query_assistant.py # Query interface
+└── requirements.txt       # Python dependencies
+```
 
-Name
-Value
-OPENAI_API_KEY
-your key
-SLACK_BOT_TOKEN
-(optional)
+## OpenAI Vector Store Workflow
 
-Production use
-	•	Local FAISS
-Copy faiss.index & faiss.index.meta.pkl; load with faiss.read_index.
-	•	Remote Qdrant
-docker run -p 6333:6333 qdrant/qdrant then
-python ingest_vector_db.py --db qdrant --host localhost.
+The OpenAI approach is recommended for production use:
 
-At inference:
-vec = embed(question)                # same OpenAI model
-scores, ids = index.search(vec, k=8)
-context = "\n\n".join(meta[i]["text"] for i in ids[0])
-answer = chat_complete(question, context)
-Troubleshooting
-Issue
-Fix
-ModuleNotFoundError: faiss
-newer wheel exposes faiss_cpu; import fallback already present.
-No module named pip in venv
-python -m ensurepip --upgrade && python -m pip install -U pip.
-OpenAI quota hit
-set OPENAI_MAX_TOKENS env or lower chunk_size.
+1. **Build JSONL**: Convert markdown files to JSONL format with metadata
+2. **Upload**: Upload to OpenAI with `purpose="vector_store"`
+3. **Create Store**: OpenAI handles embedding and indexing
+4. **Create Assistant**: Attach vector store to Assistant with retrieval tool
+5. **Query**: Single API call handles embedding, search, and response generation
 
-License
+### Advantages
 
-MIT – do whatever you want, no warranty.  Contributions welcome!
+- ✅ No large files to manage (GitHub rejected 400MB FAISS files)
+- ✅ Automatic embedding and indexing
+- ✅ Built-in citations and metadata
+- ✅ Scalable and managed by OpenAI
+- ✅ Simple API for queries
+
+## Configuration
+
+Edit `config/settings.yaml` to customize:
+- Scraping URLs and patterns
+- Chunking parameters
+- Vector store settings
+- Model configurations
+
+## License
+
+MIT License
 
 © 2025 Drew / madengineering
-Everything you need—ignore files, complete README, and you’re CI-ready.
+Everything you need—ignore files, complete README, and you're CI-ready.
