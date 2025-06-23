@@ -1,0 +1,32 @@
+# ─────────── core scraping / parsing ───────────
+beautifulsoup4
+readability-lxml
+markdownify
+langdetect
+tqdm
+
+# ─────────── OpenAI + embedding utilities ──────
+openai
+tiktoken
+
+# ─────────── vector stores ─────────────────────
+faiss-cpu          # any wheel ≥1.7
+qdrant-client
+
+# ─────────── data / glue libs ──────────────────
+numpy
+PyYAML
+pydantic
+python-dotenv
+
+# ─────────── evaluation stack ──────────────────
+ragas
+datasets
+
+# ─────────── LangChain 0.3 series ──────────────
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+langsmith
+langchain_openai

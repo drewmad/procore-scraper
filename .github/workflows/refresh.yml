@@ -1,0 +1,80 @@
+name: Refresh‑Procore‑RAG
+
+on:
+  workflow_dispatch:     # run by hand
+  schedule:
+    - cron: "0 6 * * 1"  # every Monday 06:00 UTC
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  PYTHON_VERSION: "3.13"
+  INDEX_DIR: "data/embeddings"
+  FAISS_FILE: "faiss.index"
+
+jobs:
+  build-index:
+    runs-on: macos-14
+    timeout-minutes: 60
+
+    steps:
+      # 1)  Checkout
+      - uses: actions/checkout@v4
+
+      # 2)  Restore Python deps cache
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            .venv
+          key: ${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('requirements.txt') }}
+
+      # 3)  Set up Python & venv
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Create & activate venv
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install -U pip setuptools wheel
+          python -m pip install -r requirements.txt
+          python -m pip install -e .
+
+      # 4)  Run the pipeline (incremental)
+      - name: Crawl, embed, ingest
+        run: |
+          source .venv/bin/activate
+          python generate_url_list.py
+          python fetch_sitemap_urls.py --domains developers.procore.com support.procore.com procore.com --out url_list_site.txt
+          cat url_list.txt url_list_site.txt | sort -u > url_list_full.txt
+          python prune_urls.py url_list_full.txt
+          python scrape_procore.py url_list_clean.txt
+          python chunk_and_embed.py
+          python ingest_vector_db.py --db faiss
+
+      # 5)  Upload the new index as an artifact
+      - name: Upload FAISS artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: faiss-index-${{ github.run_number }}
+          retention-days: 14
+          path: |
+            faiss.index
+            faiss.index.meta.pkl
+
+      # 6)  (Optional) Slack alert on failure
+      - name: Notify Slack
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "channel": "#alerts",
+              "username": "RAG‑bot",
+              "text": "*Procore RAG refresh failed:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View logs>"
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}

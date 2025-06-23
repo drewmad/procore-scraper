@@ -1,0 +1,23 @@
+# ── RAG pipeline settings ────────────────────────────────────────────────
+# All key names are lowercase; every script does a .get() so you can omit
+# anything you don’t care about.
+
+# Vector store: 'faiss' for local in-RAM index, or 'qdrant' if you run the
+# standalone server / Docker.
+vector_db: faiss
+
+# OpenAI embedding model
+#   text-embedding-3-small  • $0.02 / 1M tokens   • 1536-dim
+#   text-embedding-3-large  • $0.13 / 1M tokens   • 3072-dim  ← higher recall
+emb_model: text-embedding-3-large
+
+# DynamicMarkdownSplitter parameters
+chunk_size: 320        # target size in tokens
+chunk_min:   280        # recurse until <= this
+chunk_max:   360        # never emit chunks larger than this
+chunk_overlap: 40       # tokens prepended from previous chunk
+
+# HNSW tuning (used only if vector_db == "qdrant")
+hnsw_m: 16
+hnsw_ef_construct: 256
+hnsw_ef_search: 64
