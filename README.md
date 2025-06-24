@@ -7,6 +7,16 @@ URL list → scrape → clean-md → chunk → embed → FAISS/Qdrant
 
 ---
 
+## ✅ Current Status
+
+**OpenAI Assistant Successfully Created and Working!**
+- Assistant ID: `asst_ueLOB0oOsC8ZQkymnJ3nBkSj`
+- File ID: `file-T8SNWWqVN4As6Nrvx2VXm2`
+- 6,081 documents processed (21.1 MB)
+- Ready for Q&A about Procore documentation
+
+---
+
 ## Features
 | Stage | Highlights |
 |-------|------------|
@@ -30,6 +40,7 @@ pip install -r requirements.txt
 # Set up environment variables
 cp config/secrets.env.example config/secrets.env
 # Edit config/secrets.env with your OpenAI API key
+export OPENAI_API_KEY="your-api-key-here"
 ```
 
 ### Option 1: Local FAISS Index
@@ -45,24 +56,43 @@ python chunk_and_embed.py
 python ingest_vector_db.py --db faiss
 ```
 
-### Option 2: OpenAI Vector Store (Recommended)
+### Option 2: OpenAI Vector Store (Recommended) ✅
 
 ```bash
 # 1. Scrape and process content (same as above)
 python scrape_procore.py
 python chunk_and_embed.py
 
-# 2. Build JSONL payload for OpenAI
+# 2. Build JSON payload for OpenAI
 python build_jsonl.py
 
-# 3. Create OpenAI vector store
-python create_store.py
-
-# 4. Create Assistant with retrieval tool
+# 3. Create OpenAI Assistant (already done!)
 python create_assistant.py
 
-# 5. Query the Assistant
-python query_assistant.py
+# 4. Query the Assistant
+python test_query.py
+# or for interactive mode:
+python interactive_query.py
+```
+
+## Usage Examples
+
+### Test the Assistant
+```bash
+# Ask about Procore API authentication
+python test_query.py
+```
+
+### Interactive Q&A
+```bash
+# Start interactive session
+python interactive_query.py
+
+# Example questions:
+# - "How do I authenticate with the Procore API?"
+# - "What are the main features of Procore?"
+# - "How do I refresh an OAuth token?"
+# - "What is the project management workflow?"
 ```
 
 ## File Structure
@@ -82,7 +112,9 @@ python query_assistant.py
 │   ├── build_jsonl.py     # OpenAI payload builder
 │   ├── create_store.py    # OpenAI vector store
 │   ├── create_assistant.py # OpenAI Assistant
-│   └── query_assistant.py # Query interface
+│   ├── query_assistant.py # Query interface
+│   ├── test_query.py      # Test script
+│   └── interactive_query.py # Interactive Q&A
 └── requirements.txt       # Python dependencies
 ```
 
@@ -90,11 +122,10 @@ python query_assistant.py
 
 The OpenAI approach is recommended for production use:
 
-1. **Build JSONL**: Convert markdown files to JSONL format with metadata
-2. **Upload**: Upload to OpenAI with `purpose="vector_store"`
-3. **Create Store**: OpenAI handles embedding and indexing
-4. **Create Assistant**: Attach vector store to Assistant with retrieval tool
-5. **Query**: Single API call handles embedding, search, and response generation
+1. **Build JSON**: Convert markdown files to JSON format with metadata
+2. **Upload**: Upload to OpenAI with `purpose="assistants"`
+3. **Create Assistant**: Attach file to Assistant with `code_interpreter` tool
+4. **Query**: Single API call handles embedding, search, and response generation
 
 ### Advantages
 
@@ -103,6 +134,7 @@ The OpenAI approach is recommended for production use:
 - ✅ Built-in citations and metadata
 - ✅ Scalable and managed by OpenAI
 - ✅ Simple API for queries
+- ✅ Working Assistant ready for use
 
 ## Configuration
 
@@ -111,6 +143,18 @@ Edit `config/settings.yaml` to customize:
 - Chunking parameters
 - Vector store settings
 - Model configurations
+
+## Troubleshooting
+
+### OpenAI API Issues
+- Ensure your API key is set: `export OPENAI_API_KEY="your-key"`
+- Check API credits and rate limits
+- Verify file upload was successful
+
+### Assistant Issues
+- Use the correct Assistant ID: `asst_ueLOB0oOsC8ZQkymnJ3nBkSj`
+- Ensure the file is properly attached
+- Check for deprecation warnings (normal, API still works)
 
 ## License
 

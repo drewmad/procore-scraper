@@ -5,8 +5,8 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # 2-A upload the file
 file_id = openai.files.create(
-    file=open("openai_payload.jsonl", "rb"),
-    purpose="vector_store"
+    file=open("openai_payload.json", "rb"),
+    purpose="assistants"
 ).id
 print("file:", file_id)
 
